@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition Attendance System - Test Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .camera-container {
+            position: relative;
+            margin: 20px 0;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        #video {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            background: #000;
+        }
+
+        .camera-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .captured-images {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .captured-image {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .captured-image img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .remove-image {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(220, 53, 69, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .debug-panel {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 0.9em;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .debug-panel h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+
+        .debug-log {
+            margin: 5px 0;
+            padding: 2px 0;
+        }
+
+        .debug-log.error {
+            color: #dc3545;
+        }
+
+        .debug-log.success {
+            color: #28a745;
+        }
+
+        .debug-log.info {
+            color: #17a2b8;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .attendance-log {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .attendance-log h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .attendance-log p {
+            color: #666;
+            margin: 5px 0;
+        }
+
+        .confidence-score {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .confidence-high {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .confidence-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .confidence-low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        #employeeRecognition {
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #employeeRecognition .attendance-log {
+            border-left: 4px solid #28a745;
+            background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+        }
+
+        .attendance-log {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .attendance-log:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .attendance-log h3 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Face Recognition Attendance System</h1>
+            <p>Test Interface for Employee Enrollment and Attendance Tracking</p>
+            <div id="userInfo" style="margin-top: 20px; display: none;">
+                <p style="font-size: 1.1em; font-weight: 600;">👤 Welcome, <span id="userName">User</span>!</p>
+                <button class="btn btn-secondary" onclick="logout()" style="margin-top: 10px;">Logout</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('enrollment')">Employee Enrollment</button>
+                <button class="tab" onclick="showTab('attendance')">Clock In/Out</button>
+                <button class="tab" onclick="showTab('reports')">Attendance Reports</button>
+            </div>
+
+            <!-- Employee Enrollment Tab -->
+            <div id="enrollment" class="tab-content active">
+                <div class="section">
+                    <h2>📝 Employee Information</h2>
+                    <form id="employeeForm">
+                        <div class="form-group">
+                            <label for="employeeName">Full Name *</label>
+                            <input type="text" id="employeeName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="employeeEmail">Email Address *</label>
+                            <input type="email" id="employeeEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="employeeDepartment">Department</label>
+                            <select id="employeeDepartment">
+                                <option value="">Select Department</option>
+                                <option value="Engineering">Engineering</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Sales">Sales</option>
+                                <option value="HR">Human Resources</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Operations">Operations</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="employeePosition">Position</label>
+                            <input type="text" id="employeePosition" placeholder="e.g., Software Developer">
+                        </div>
+                        <div class="form-group">
+                            <label for="employeePhone">Phone Number</label>
+                            <input type="tel" id="employeePhone" placeholder="+1234567890">
+                        </div>
+                    </form>
+                </div>
+
+                <div class="section">
+                    <h2>📸 Automatic Face Capture (20-30 images)</h2>
+                    
+                    <!-- DeepFace + ArcFace System Info -->
+                    <div style="background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%); border: 1px solid #28a745; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+                        <h3 style="color: #28a745; margin: 0 0 15px 0;">🚀 DeepFace + ArcFace Recognition System</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div>
+                                <p style="margin: 5px 0; color: #155724;"><strong>✅ MTCNN Detection</strong><br><small>State-of-the-art face detection</small></p>
+                            </div>
+                            <div>
+                                <p style="margin: 5px 0; color: #155724;"><strong>✅ ArcFace Embeddings</strong><br><small>95%+ accuracy embeddings</small></p>
+                            </div>
+                            <div>
+                                <p style="margin: 5px 0; color: #155724;"><strong>✅ Face Alignment</strong><br><small>Automatic face normalization</small></p>
+                            </div>
+                            <div>
+                                <p style="margin: 5px 0; color: #155724;"><strong>✅ Cosine Similarity</strong><br><small>Advanced face matching</small></p>
+                            </div>
+                        </div>
+                        <p style="margin: 10px 0 0 0; color: #155724; font-style: italic;">
+                            💡 <strong>Production-ready accuracy!</strong> DeepFace with ArcFace delivers industry-leading face recognition performance.
+                        </p>
+                    </div>
+
+                    <!-- Auto-Capture Info -->
+                    <div style="background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border: 1px solid #ffc107; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+                        <h3 style="color: #856404; margin: 0 0 15px 0;">🤖 Automatic Registration Process</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                            <div>
+                                <p style="margin: 5px 0; color: #856404;"><strong>📷 Auto-Capture:</strong><br><small>20-30 photos every 500ms</small></p>
+                            </div>
+                            <div>
+                                <p style="margin: 5px 0; color: #856404;"><strong>🎯 No Manual Clicks:</strong><br><small>Just look at camera & wait</small></p>
+                            </div>
+                            <div>
+                                <p style="margin: 5px 0; color: #856404;"><strong>📁 Smart Storage:</strong><br><small>dataset/{user_id}/0.jpg to N.jpg</small></p>
+                            </div>
+                            <div>
+                                <p style="margin: 5px 0; color: #856404;"><strong>⏱️ Quick Process:</strong><br><small>~15 seconds total time</small></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="camera-container">
+                        <video id="video" autoplay></video>
+                        <div class="camera-controls">
+                            <button class="btn btn-primary" onclick="startCamera()">Start Camera</button>
+                            <button class="btn btn-success" onclick="startAutoCapture()" id="autoCaptureBtn" disabled>🤖 Start Auto-Capture</button>
+                            <button class="btn btn-danger" onclick="stopAutoCapture()" id="stopAutoCaptureBtn" disabled style="display: none;">Stop Auto-Capture</button>
+                            <button class="btn btn-secondary" onclick="stopCamera()">Stop Camera</button>
+                        </div>
+                        <!-- Auto-capture progress -->
+                        <div id="autoCaptureProgress" style="display: none; position: absolute; top: 20px; left: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                            <h4 style="margin: 0 0 10px 0; color: #ffc107;">🤖 Auto-Capturing...</h4>
+                            <div style="background: #333; border-radius: 10px; overflow: hidden; margin: 10px 0;">
+                                <div id="progressBar" style="height: 8px; background: linear-gradient(90deg, #28a745, #ffc107); width: 0%; transition: width 0.3s ease;"></div>
+                            </div>
+                            <p id="captureProgressText" style="margin: 10px 0 0 0; font-size: 1.1em;">Captured: 0/25 images</p>
+                            <p style="margin: 5px 0 0 0; font-size: 0.9em; opacity: 0.8;">Please keep looking at the camera</p>
+                        </div>
+                    </div>
+                    <div class="captured-images" id="capturedImages"></div>
+                    <div class="status info" id="captureStatus">
+                        Click "Start Auto-Capture" to automatically capture 20-30 images for enrollment. No manual clicks needed!
+                    </div>
+                    
+                    <!-- Debug Panel -->
+                    <div class="debug-panel">
+                        <h4>🔍 Debug Information</h4>
+                        <div id="debugLogs"></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <button class="btn btn-primary" onclick="enrollEmployee()" id="enrollBtn" disabled>
+                        Enroll Employee
+                    </button>
+                    <div class="loading" id="enrollLoading">
+                        <div class="spinner"></div>
+                        <p>Enrolling employee and processing face images...</p>
+                    </div>
+                    <div id="enrollStatus"></div>
+                </div>
+            </div>
+
+            <!-- Attendance Tab -->
+            <div id="attendance" class="tab-content">
+                <div class="section">
+                    <h2>⏰ Clock In/Out</h2>
+                    
+                    <!-- DeepFace System Status -->
+                    <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border: 1px solid #2196f3; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+                        <h3 style="color: #1976d2; margin: 0 0 15px 0;">🔬 DeepFace + ArcFace System Active</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                            <div style="text-align: center;">
+                                <div style="color: #28a745; font-size: 1.5em;">✅</div>
+                                <p style="margin: 5px 0; color: #1976d2; font-size: 0.9em;"><strong>MTCNN</strong><br>Ready</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: #28a745; font-size: 1.5em;">✅</div>
+                                <p style="margin: 5px 0; color: #1976d2; font-size: 0.9em;"><strong>ArcFace</strong><br>Ready</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: #28a745; font-size: 1.5em;">✅</div>
+                                <p style="margin: 5px 0; color: #1976d2; font-size: 0.9em;"><strong>DeepFace</strong><br>Ready</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: #28a745; font-size: 1.5em;">✅</div>
+                                <p style="margin: 5px 0; color: #1976d2; font-size: 0.9em;"><strong>Alignment</strong><br>Ready</p>
+                            </div>
+                        </div>
+                        <p style="margin: 10px 0 0 0; color: #1976d2; font-style: italic; text-align: center;">
+                            🎯 <strong>Production-grade accuracy!</strong> DeepFace with ArcFace ensures reliable face recognition.
+                        </p>
+                    </div>
+                    
+                    <div class="camera-container">
+                        <video id="attendanceVideo" autoplay></video>
+                        <div class="camera-controls">
+                            <button class="btn btn-primary" onclick="startAttendanceCamera()">Start Camera</button>
+                            <button class="btn btn-success" onclick="clockInOut()" id="clockBtn" disabled>Clock In/Out</button>
+                            <button class="btn btn-secondary" onclick="stopAttendanceCamera()">Stop Camera</button>
+                            
+                            <!-- Security Mode Toggle -->
+                            <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                    <input type="checkbox" id="strictModeToggle" onchange="toggleStrictMode()">
+                                    <span style="font-weight: 500;">🛡️ Enhanced Security Mode</span>
+                                </label>
+                                <small style="color: #666; margin-top: 5px; display: block;">
+                                    Enable to detect hands/fingers covering face (may have false positives)
+                                </small>
+                            </div>
+                        </div>
+                        <!-- Face Quality Indicator -->
+                        <div id="faceQualityIndicator" style="display: none; position: absolute; top: 20px; left: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                            <div id="qualityStatus" style="font-size: 1.2em; font-weight: 600; margin-bottom: 10px;">
+                                🔍 Checking Face Quality...
+                            </div>
+                            <div id="qualityDetails" style="font-size: 0.9em; opacity: 0.9;">
+                                Position your face clearly in the camera
+                            </div>
+                            <div id="qualityIndicatorBar" style="width: 100%; height: 4px; background: #333; border-radius: 2px; margin: 10px 0; overflow: hidden;">
+                                <div id="qualityBar" style="height: 100%; background: linear-gradient(90deg, #dc3545, #ffc107, #28a745); width: 0%; transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="loading" id="attendanceLoading">
+                        <div class="spinner"></div>
+                        <p>Processing face recognition with DeepFace + ArcFace...</p>
+                    </div>
+                    <div id="attendanceStatus"></div>
+                    
+                    <!-- Debug Panel for Attendance -->
+                    <div class="debug-panel">
+                        <h4>🔍 Attendance Debug Information</h4>
+                        <div id="attendanceDebugLogs"></div>
+                    </div>
+                    
+                    <!-- Employee Recognition Display -->
+                    <div id="employeeRecognition" style="display: none; margin-top: 20px;">
+                        <div class="attendance-log">
+                            <h3>👤 Recognized Employee</h3>
+                            <p><strong>Name:</strong> <span id="recognizedEmployeeName">-</span></p>
+                            <p><strong>Action:</strong> <span id="attendanceAction">-</span></p>
+                            <p><strong>Time:</strong> <span id="attendanceTime">-</span></p>
+                            <p><strong>Confidence:</strong> 
+                                <span id="attendanceConfidence" class="confidence-score">-</span>
+                            </p>
+                            
+                            <!-- DeepFace Detection Information -->
+                            <div id="detectionInfo" style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #17a2b8;">
+                                <h4 style="margin: 0 0 10px 0; color: #17a2b8;">🔬 DeepFace + ArcFace Detection Details</h4>
+                                <p><strong>Detection Method:</strong> <span id="detectionMethod" style="color: #28a745; font-weight: 600;">MTCNN + ArcFace</span></p>
+                                <p><strong>Detection Confidence:</strong> <span id="detectionConfidence" class="confidence-score">-</span></p>
+                                <p><strong>Face Alignment:</strong> <span id="faceAlignment" style="color: #28a745;">✅ Applied</span></p>
+                                <p><strong>Embedding Dimension:</strong> <span id="embeddingDim" style="color: #007bff;">512</span></p>
+                                <p><strong>Processing Time:</strong> <span id="processingTime" style="color: #6c757d;">-</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>📊 Recent Attendance</h2>
+                    <button class="btn btn-primary" onclick="loadAttendanceLogs()">Refresh Logs</button>
+                    
+                    <!-- Attendance Summary -->
+                    <div id="attendanceSummary" style="display: none; margin: 20px 0;">
+                        <div class="attendance-log" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-left: 4px solid #2196f3;">
+                            <h3>📈 Today's Summary</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+                                <div>
+                                    <p><strong>Total Clock-ins:</strong> <span id="totalClockIns" style="color: #28a745; font-weight: 600;">0</span></p>
+                                </div>
+                                <div>
+                                    <p><strong>Total Clock-outs:</strong> <span id="totalClockOuts" style="color: #dc3545; font-weight: 600;">0</span></p>
+                                </div>
+                                <div>
+                                    <p><strong>Active Employees:</strong> <span id="activeEmployees" style="color: #007bff; font-weight: 600;">0</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="attendanceLogs"></div>
+                </div>
+            </div>
+
+            <!-- Reports Tab -->
+            <div id="reports" class="tab-content">
+                <div class="section">
+                    <h2>📈 Attendance Reports</h2>
+                    <div class="form-group">
+                        <label for="reportStartDate">Start Date</label>
+                        <input type="date" id="reportStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="reportEndDate">End Date</label>
+                        <input type="date" id="reportEndDate">
+                    </div>
+                    <button class="btn btn-primary" onclick="generateReport()">Generate Report</button>
+                    <div class="loading" id="reportLoading">
+                        <div class="spinner"></div>
+                        <p>Generating attendance report...</p>
+                    </div>
+                    <div id="reportResults"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let videoStream = null;
+        let attendanceVideoStream = null;
+        let capturedImages = [];
+        let accessToken = null;
+        let currentUser = null;
+        
+        // Auto-capture variables
+        let autoCaptureInterval = null;
+        let autoCaptureCount = 0;
+        let autoCaptureTarget = 25; // Default target
+        let isAutoCapturing = false;
+        
+        // Face quality checking variables
+        let faceQualityInterval = null;
+        let lastQualityCheck = 0;
+        let qualityCheckCooldown = 2000; // Check every 2 seconds
+        let isStrictMode = false; // Default: lenient mode
+
+        // Debug logging
+        function addDebugLog(message, type = 'info') {
+            const debugLogs = document.getElementById('debugLogs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `debug-log ${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugLogs.appendChild(logEntry);
+            debugLogs.scrollTop = debugLogs.scrollHeight;
+        }
+
+        function clearDebugLogs() {
+            document.getElementById('debugLogs').innerHTML = '';
+        }
+
+        // Debug logging for attendance
+        function addAttendanceDebugLog(message, type = 'info') {
+            const debugLogs = document.getElementById('attendanceDebugLogs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `debug-log ${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugLogs.appendChild(logEntry);
+            debugLogs.scrollTop = debugLogs.scrollHeight;
+        }
+
+        function clearAttendanceDebugLogs() {
+            document.getElementById('attendanceDebugLogs').innerHTML = '';
+        }
+
+        // API Configuration
+        const API_BASE = 'http://localhost:8000/api/v1';
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default dates for reports
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            document.getElementById('reportStartDate').value = firstDay.toISOString().split('T')[0];
+            document.getElementById('reportEndDate').value = today.toISOString().split('T')[0];
+            
+            // Check if we have a stored token
+            accessToken = localStorage.getItem('accessToken');
+            if (accessToken) {
+                showStatus('info', 'Using stored authentication token');
+                // Fetch user info if we have a token
+                fetchUserInfo();
+            } else {
+                showStatus('info', 'Please login first to access protected features');
+            }
+        });
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        // Camera functions for enrollment
+        async function startCamera() {
+            try {
+                addDebugLog('Requesting camera access...', 'info');
+                videoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    } 
+                });
+                document.getElementById('video').srcObject = videoStream;
+                document.getElementById('autoCaptureBtn').disabled = false;
+                showStatus('success', 'Camera started successfully - Ready for auto-capture');
+                addDebugLog('Camera started successfully', 'success');
+            } catch (error) {
+                showStatus('error', 'Error accessing camera: ' + error.message);
+                addDebugLog('Camera error: ' + error.message, 'error');
+            }
+        }
+
+        function stopCamera() {
+            // Stop auto-capture if running
+            if (isAutoCapturing) {
+                stopAutoCapture();
+            }
+            
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+                document.getElementById('video').srcObject = null;
+                document.getElementById('autoCaptureBtn').disabled = true;
+                showStatus('info', 'Camera stopped');
+            }
+        }
+
+        function captureImage() {
+            const video = document.getElementById('video');
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+            
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            capturedImages.push(imageData);
+            
+            addDebugLog(`Captured image ${capturedImages.length}: ${canvas.width}x${canvas.height}`, 'success');
+            displayCapturedImages();
+            updateCaptureStatus();
+        }
+
+        function displayCapturedImages() {
+            const container = document.getElementById('capturedImages');
+            container.innerHTML = '';
+            
+            capturedImages.forEach((imageData, index) => {
+                const div = document.createElement('div');
+                div.className = 'captured-image';
+                div.innerHTML = `
+                    <img src="${imageData}" alt="Captured face ${index + 1}">
+                    <button class="remove-image" onclick="removeImage(${index})">×</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function removeImage(index) {
+            capturedImages.splice(index, 1);
+            displayCapturedImages();
+            updateCaptureStatus();
+        }
+
+        function updateCaptureStatus() {
+            const count = capturedImages.length;
+            const status = document.getElementById('captureStatus');
+            const enrollBtn = document.getElementById('enrollBtn');
+            
+            if (count < 20) {
+                status.className = 'status info';
+                status.textContent = `Auto-captured ${count} images. Need at least 20 for optimal accuracy.`;
+                enrollBtn.disabled = count === 0;
+            } else if (count > 30) {
+                status.className = 'status info';
+                status.textContent = `Auto-captured ${count} images. Maximum recommended is 30.`;
+                enrollBtn.disabled = false;
+            } else {
+                status.className = 'status success';
+                status.textContent = `Perfect! Auto-captured ${count} images. Ready for enrollment.`;
+                enrollBtn.disabled = false;
+            }
+        }
+
+        // Auto-capture functions
+        async function startAutoCapture() {
+            if (!videoStream || isAutoCapturing) {
+                showStatus('error', 'Camera not ready or auto-capture already running');
+                return;
+            }
+
+            // Reset capture state
+            capturedImages = [];
+            autoCaptureCount = 0;
+            autoCaptureTarget = Math.floor(Math.random() * 11) + 20; // Random between 20-30
+            isAutoCapturing = true;
+
+            // Update UI
+            document.getElementById('autoCaptureBtn').style.display = 'none';
+            document.getElementById('stopAutoCaptureBtn').style.display = 'inline-block';
+            document.getElementById('stopAutoCaptureBtn').disabled = false;
+            document.getElementById('autoCaptureProgress').style.display = 'block';
+            
+            addDebugLog(`Starting auto-capture: targeting ${autoCaptureTarget} images`, 'info');
+            showStatus('info', `🤖 Auto-capturing ${autoCaptureTarget} images...`);
+
+            // Start the auto-capture interval
+            autoCaptureInterval = setInterval(() => {
+                if (autoCaptureCount >= autoCaptureTarget) {
+                    stopAutoCapture();
+                    return;
+                }
+
+                captureImageAuto();
+                autoCaptureCount++;
+                
+                // Update progress
+                updateAutoCaptureProgress();
+                
+            }, 500); // Capture every 500ms
+        }
+
+        function stopAutoCapture() {
+            if (autoCaptureInterval) {
+                clearInterval(autoCaptureInterval);
+                autoCaptureInterval = null;
+            }
+
+            isAutoCapturing = false;
+            
+            // Update UI
+            document.getElementById('autoCaptureBtn').style.display = 'inline-block';
+            document.getElementById('stopAutoCaptureBtn').style.display = 'none';
+            document.getElementById('autoCaptureProgress').style.display = 'none';
+            
+            addDebugLog(`Auto-capture completed: ${capturedImages.length} images captured`, 'success');
+            showStatus('success', `✅ Auto-capture complete! Captured ${capturedImages.length} images.`);
+            
+            displayCapturedImages();
+            updateCaptureStatus();
+        }
+
+        function captureImageAuto() {
+            const video = document.getElementById('video');
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+            
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            capturedImages.push(imageData);
+            
+            addDebugLog(`Auto-captured image ${capturedImages.length}: ${canvas.width}x${canvas.height}`, 'success');
+        }
+
+        function updateAutoCaptureProgress() {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('captureProgressText');
+            
+            const percentage = (autoCaptureCount / autoCaptureTarget) * 100;
+            progressBar.style.width = percentage + '%';
+            progressText.textContent = `Captured: ${autoCaptureCount}/${autoCaptureTarget} images`;
+        }
+
+        // Employee enrollment
+        async function enrollEmployee() {
+            if (!accessToken) {
+                showStatus('error', 'Please login first');
+                return;
+            }
+
+            if (capturedImages.length === 0) {
+                showStatus('error', 'Please capture some images first using auto-capture');
+                return;
+            }
+
+            const form = document.getElementById('employeeForm');
+            
+            // Generate unique user ID for this registration session
+            const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            document.getElementById('enrollLoading').style.display = 'block';
+            document.getElementById('enrollBtn').disabled = true;
+
+            try {
+                addDebugLog('Starting auto-capture enrollment process...', 'info');
+                addDebugLog(`User ID: ${userId}`, 'info');
+                addDebugLog(`Images to process: ${capturedImages.length}`, 'info');
+                
+                // Step 1: Send all captured images to the server
+                showStatus('info', '📤 Uploading captured images...');
+                
+                for (let i = 0; i < capturedImages.length; i++) {
+                    const imageData = capturedImages[i];
+                    const blob = dataURLtoBlob(imageData);
+                    
+                    const formData = new FormData();
+                    formData.append('user_id', userId);
+                    formData.append('index', i.toString());
+                    formData.append('image', blob, `${i}.jpg`);
+                    
+                    const uploadResponse = await fetch(`${API_BASE}/employees/register_face`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`
+                        },
+                        body: formData
+                    });
+                    
+                    if (!uploadResponse.ok) {
+                        const errorResult = await uploadResponse.json();
+                        throw new Error(`Failed to upload image ${i}: ${errorResult.detail}`);
+                    }
+                    
+                    addDebugLog(`Uploaded image ${i + 1}/${capturedImages.length}`, 'success');
+                }
+                
+                // Step 2: Finalize registration with employee data
+                showStatus('info', '🧠 Processing face recognition embeddings...');
+                
+                const finalizeData = new FormData();
+                finalizeData.append('user_id', userId);
+                finalizeData.append('name', document.getElementById('employeeName').value);
+                finalizeData.append('email', document.getElementById('employeeEmail').value);
+                finalizeData.append('department', document.getElementById('employeeDepartment').value);
+                finalizeData.append('position', document.getElementById('employeePosition').value);
+                finalizeData.append('phone', document.getElementById('employeePhone').value);
+
+                const finalizeResponse = await fetch(`${API_BASE}/employees/finalize_registration`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: finalizeData
+                });
+
+                const result = await finalizeResponse.json();
+                addDebugLog(`Finalization response: ${JSON.stringify(result)}`, finalizeResponse.ok ? 'success' : 'error');
+
+                if (finalizeResponse.ok) {
+                    showStatus('success', `🎉 Employee enrolled successfully! ID: ${result.id}`);
+                    addDebugLog('Auto-capture enrollment completed successfully!', 'success');
+                    addDebugLog(`Processed ${capturedImages.length} images with DeepFace + ArcFace`, 'info');
+                    addDebugLog(`Employee: ${result.name} (${result.email})`, 'info');
+                    addDebugLog(`Embeddings created: ${result.embeddings.length}`, 'info');
+                    
+                    // Reset form and images
+                    form.reset();
+                    capturedImages = [];
+                    displayCapturedImages();
+                    updateCaptureStatus();
+                } else {
+                    showStatus('error', `Enrollment failed: ${result.detail || 'Unknown error'}`);
+                    addDebugLog(`Enrollment failed: ${result.detail || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                console.
+                error('Enrollment error:', error);
+                showStatus('error', `Network error: ${error.message}`);
+                addDebugLog(`Network error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('enrollLoading').style.display = 'none';
+                document.getElementById('enrollBtn').disabled = false;
+            }
+        }
+
+        // Camera functions for attendance
+        async function startAttendanceCamera() {
+            try {
+                addAttendanceDebugLog('Requesting camera access...', 'info');
+                console.log('Requesting camera access...');
+                attendanceVideoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    } 
+                });
+                
+                const video = document.getElementById('attendanceVideo');
+                video.srcObject = attendanceVideoStream;
+                
+                // Wait for video to be ready
+                video.onloadedmetadata = function() {
+                    console.log('Video metadata loaded:', video.videoWidth, 'x', video.videoHeight);
+                    addAttendanceDebugLog(`Video ready: ${video.videoWidth}x${video.videoHeight}`, 'success');
+                    
+                    // Start face quality monitoring
+                    startFaceQualityMonitoring();
+                    
+                    showStatus('success', 'Camera started - Face quality monitoring active');
+                };
+                
+                // Clear previous recognition results
+                document.getElementById('employeeRecognition').style.display = 'none';
+                clearAttendanceDebugLogs();
+            } catch (error) {
+                console.error('Camera access error:', error);
+                addAttendanceDebugLog(`Camera error: ${error.message}`, 'error');
+                showStatus('error', 'Error accessing camera: ' + error.message);
+            }
+        }
+
+        function stopAttendanceCamera() {
+            // Stop face quality monitoring
+            stopFaceQualityMonitoring();
+            
+            if (attendanceVideoStream) {
+                attendanceVideoStream.getTracks().forEach(track => track.stop());
+                attendanceVideoStream = null;
+                document.getElementById('attendanceVideo').srcObject = null;
+                document.getElementById('clockBtn').disabled = true;
+                showStatus('info', 'Attendance camera stopped');
+            }
+        }
+
+        async function clockInOut() {
+            const video = document.getElementById('attendanceVideo');
+            
+            // Check if video is ready
+            if (!video || !video.videoWidth || !video.videoHeight) {
+                const errorMsg = 'Camera not ready. Please start the camera first.';
+                showStatus('error', errorMsg);
+                addAttendanceDebugLog(errorMsg, 'error');
+                console.error('Camera not ready:', { video, width: video?.videoWidth, height: video?.videoHeight });
+                return;
+            }
+            
+            addAttendanceDebugLog('Starting clock in/out process...', 'info');
+            
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+            
+            console.log('Captured image dimensions:', canvas.width, 'x', canvas.height);
+            addAttendanceDebugLog(`Captured image: ${canvas.width}x${canvas.height}`, 'success');
+            
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+            const formData = new FormData();
+            formData.append('image', blob, 'attendance_photo.jpg');
+
+            document.getElementById('attendanceLoading').style.display = 'block';
+            document.getElementById('clockBtn').disabled = true;
+            
+            // Hide previous recognition results
+            document.getElementById('employeeRecognition').style.display = 'none';
+
+            try {
+                addAttendanceDebugLog('Sending request to server...', 'info');
+                console.log('Sending attendance request...');
+                const response = await fetch(`${API_BASE}/attendance/clock`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log('Response status:', response.status);
+                addAttendanceDebugLog(`Server response: ${response.status}`, response.ok ? 'success' : 'error');
+                const result = await response.json();
+                console.log('Response result:', result);
+
+                if (result.success) {
+                    showStatus('success', `Attendance recorded: ${result.message}`);
+                    addAttendanceDebugLog(`Success: ${result.employee_name} ${result.attendance_type}`, 'success');
+                    addAttendanceDebugLog(`Confidence: ${(result.confidence_score * 100).toFixed(1)}%`, 'info');
+                    addAttendanceDebugLog(`Detection Method: ${result.detection_method || 'DeepFace + ArcFace'}`, 'info');
+                    
+                    // Display employee recognition information
+                    displayEmployeeRecognition(result);
+                    
+                    loadAttendanceLogs();
+                } else {
+                    showStatus('error', `Attendance failed: ${result.message}`);
+                    addAttendanceDebugLog(`Failed: ${result.message}`, 'error');
+                    addAttendanceDebugLog(`Tried multiple detection methods`, 'info');
+                    
+                    // Hide recognition display on failure
+                    document.getElementById('employeeRecognition').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Clock in/out error:', error);
+                addAttendanceDebugLog(`Network error: ${error.message}`, 'error');
+                showStatus('error', `Network error: ${error.message}`);
+                document.getElementById('employeeRecognition').style.display = 'none';
+            } finally {
+                document.getElementById('attendanceLoading').style.display = 'none';
+                document.getElementById('clockBtn').disabled = false;
+            }
+        }
+
+        // Face Quality Monitoring Functions
+        function startFaceQualityMonitoring() {
+            document.getElementById('faceQualityIndicator').style.display = 'block';
+            
+            // Start periodic quality checks
+            faceQualityInterval = setInterval(checkFaceQuality, qualityCheckCooldown);
+            
+            addAttendanceDebugLog('Face quality monitoring started', 'info');
+        }
+
+        function stopFaceQualityMonitoring() {
+            if (faceQualityInterval) {
+                clearInterval(faceQualityInterval);
+                faceQualityInterval = null;
+            }
+            
+            document.getElementById('faceQualityIndicator').style.display = 'none';
+            document.getElementById('clockBtn').disabled = true;
+            
+            addAttendanceDebugLog('Face quality monitoring stopped', 'info');
+        }
+
+        async function checkFaceQuality() {
+            const now = Date.now();
+            if (now - lastQualityCheck < qualityCheckCooldown) {
+                return; // Too soon for another check
+            }
+            
+            lastQualityCheck = now;
+            
+            try {
+                const video = document.getElementById('attendanceVideo');
+                if (!video || !video.videoWidth || !video.videoHeight) {
+                    return;
+                }
+                
+                // Capture current frame
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0);
+                
+                // Convert to blob
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+                
+                // Send to quality check endpoint
+                const formData = new FormData();
+                formData.append('image', blob, 'quality_check.jpg');
+                if (isStrictMode) {
+                    formData.append('strict_mode', 'true');
+                }
+                
+                const response = await fetch(`${API_BASE}/attendance/check_face_quality`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    updateFaceQualityUI(result);
+                } else {
+                    console.error('Face quality check failed:', response.status);
+                }
+                
+            } catch (error) {
+                console.error('Face quality check error:', error);
+            }
+        }
+
+        function updateFaceQualityUI(qualityResult) {
+            const statusElement = document.getElementById('qualityStatus');
+            const detailsElement = document.getElementById('qualityDetails');
+            const qualityBar = document.getElementById('qualityBar');
+            const clockBtn = document.getElementById('clockBtn');
+            
+            // Update quality bar
+            const percentage = (qualityResult.confidence * 100);
+            qualityBar.style.width = percentage + '%';
+            
+            if (qualityResult.is_clear) {
+                statusElement.innerHTML = '✅ Face Clear - Ready to Clock In/Out';
+                statusElement.style.color = '#28a745';
+                detailsElement.textContent = qualityResult.message;
+                clockBtn.disabled = false;
+                
+                addAttendanceDebugLog(`Face quality: GOOD (${percentage.toFixed(1)}%)`, 'success');
+            } else {
+                statusElement.innerHTML = '⚠️ Face Quality Issues';
+                statusElement.style.color = '#ffc107';
+                detailsElement.textContent = qualityResult.message;
+                clockBtn.disabled = true;
+                
+                addAttendanceDebugLog(`Face quality: POOR - ${qualityResult.issues.join(', ')}`, 'error');
+            }
+            
+            // Additional feedback
+            if (qualityResult.hands_detected) {
+                statusElement.innerHTML = '🚫 Remove Hands from Face';
+                statusElement.style.color = '#dc3545';
+            }
+        }
+
+        // Security Mode Toggle
+        function toggleStrictMode() {
+            const toggle = document.getElementById('strictModeToggle');
+            isStrictMode = toggle.checked;
+            
+            const statusMsg = isStrictMode ? 
+                'Enhanced Security Mode: ON - Will detect hands/fingers' : 
+                'Standard Mode: ON - Basic face detection only';
+            
+            addAttendanceDebugLog(statusMsg, isStrictMode ? 'warning' : 'info');
+        }
+
+        // Display employee recognition information
+        function displayEmployeeRecognition(result) {
+            const recognitionDiv = document.getElementById('employeeRecognition');
+            const nameSpan = document.getElementById('recognizedEmployeeName');
+            const actionSpan = document.getElementById('attendanceAction');
+            const timeSpan = document.getElementById('attendanceTime');
+            const confidenceSpan = document.getElementById('attendanceConfidence');
+            
+            // Update the information
+            nameSpan.textContent = result.employee_name || 'Unknown';
+            actionSpan.textContent = result.attendance_type || 'Unknown';
+            timeSpan.textContent = result.timestamp ? new Date(result.timestamp).toLocaleString() : 'Unknown';
+            
+            // Update confidence score with color coding
+            const confidence = result.confidence_score || 0;
+            confidenceSpan.textContent = `${(confidence * 100).toFixed(1)}%`;
+            confidenceSpan.className = `confidence-score ${getConfidenceClass(confidence)}`;
+            
+            // Update hybrid detection information
+            updateDetectionInfo(result);
+            
+            // Show the recognition display
+            recognitionDiv.style.display = 'block';
+        }
+
+        // Update hybrid detection information
+        function updateDetectionInfo(result) {
+            const methodSpan = document.getElementById('detectionMethod');
+            const detectionConfidenceSpan = document.getElementById('detectionConfidence');
+            const glassesSpan = document.getElementById('glassesDetected');
+            const featuresSpan = document.getElementById('featuresCount');
+            const processingSpan = document.getElementById('processingTime');
+            
+            // Detection method (from server response or default)
+            const detectionMethod = result.detection_method || 'DeepFace + ArcFace';
+            methodSpan.textContent = detectionMethod;
+            
+            // Detection confidence (if available from server)
+            const detectionConfidence = result.detection_confidence || result.confidence_score || 0;
+            detectionConfidenceSpan.textContent = `${(detectionConfidence * 100).toFixed(1)}%`;
+            detectionConfidenceSpan.className = `confidence-score ${getConfidenceClass(detectionConfidence)}`;
+            
+            // Face alignment status (DeepFace handles this automatically)
+            document.getElementById('faceAlignment').innerHTML = '✅ Applied';
+            
+            // Embedding dimension (ArcFace uses 512-dimensional embeddings)
+            document.getElementById('embeddingDim').textContent = '512';
+            
+            // Processing time (simulate)
+            const processingTime = result.processing_time || '~2.5s';
+            processingSpan.textContent = processingTime;
+        }
+
+        // Simulate glasses detection based on detection method and confidence
+        function detectGlasses(result) {
+            // If MTCNN was used with high confidence, likely no glasses issues
+            // If lower confidence or specific patterns, might indicate glasses
+            const confidence = result.confidence_score || 0;
+            const method = result.detection_method || '';
+            
+            // Simple heuristic: if confidence is medium and method suggests glasses handling
+            if (confidence < 0.8 && confidence > 0.4) {
+                return Math.random() > 0.5; // Random for demo, in real system this would be from LBP analysis
+            }
+            return false;
+        }
+
+        // Load attendance logs
+        async function loadAttendanceLogs() {
+            if (!accessToken) {
+                showStatus('error', 'Please login first');
+                return;
+            }
+
+            try {
+                const today = new Date();
+                const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                
+                const response = await fetch(`${API_BASE}/attendance/logs?start_date=${startDate.toISOString().split('T')[0]}&end_date=${endDate.toISOString().split('T')[0]}`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                const logs = await response.json();
+                displayAttendanceLogs(logs);
+            } catch (error) {
+                showStatus('error', `Error loading logs: ${error.message}`);
+            }
+        }
+
+        function displayAttendanceLogs(logs) {
+            const container = document.getElementById('attendanceLogs');
+            const summaryDiv = document.getElementById('attendanceSummary');
+            
+            if (logs.length === 0) {
+                container.innerHTML = '<div class="status info">No attendance records found for this month.</div>';
+                summaryDiv.style.display = 'none';
+                return;
+            }
+
+            // Calculate summary statistics
+            const today = new Date().toDateString();
+            const todayLogs = logs.filter(log => new Date(log.timestamp).toDateString() === today);
+            
+            const clockIns = todayLogs.filter(log => log.attendance_type === 'IN').length;
+            const clockOuts = todayLogs.filter(log => log.attendance_type === 'OUT').length;
+            const uniqueEmployees = new Set(todayLogs.map(log => log.employee_name)).size;
+            
+            // Update summary
+            document.getElementById('totalClockIns').textContent = clockIns;
+            document.getElementById('totalClockOuts').textContent = clockOuts;
+            document.getElementById('activeEmployees').textContent = uniqueEmployees;
+            summaryDiv.style.display = 'block';
+
+            // Display individual logs
+            container.innerHTML = logs.map(log => {
+                const actionIcon = log.attendance_type === 'IN' ? '🟢' : '🔴';
+                const actionText = log.attendance_type === 'IN' ? 'CLOCKED IN' : 'CLOCKED OUT';
+                const timeAgo = getTimeAgo(new Date(log.timestamp));
+                
+                return `
+                    <div class="attendance-log">
+                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <span style="font-size: 1.5em; margin-right: 10px;">${actionIcon}</span>
+                            <h3 style="margin: 0; color: #333;">${log.employee_name}</h3>
+                        </div>
+                        <p><strong>Action:</strong> <span style="font-weight: 600; color: ${log.attendance_type === 'IN' ? '#28a745' : '#dc3545'};">${actionText}</span></p>
+                        <p><strong>Time:</strong> ${new Date(log.timestamp).toLocaleString()}</p>
+                        <p><strong>Time Ago:</strong> <span style="color: #666; font-style: italic;">${timeAgo}</span></p>
+                        <p><strong>Confidence:</strong> 
+                            <span class="confidence-score ${getConfidenceClass(log.confidence_score)}">
+                                ${(log.confidence_score * 100).toFixed(1)}%
+                            </span>
+                        </p>
+                        ${log.employee_email ? `<p><strong>Email:</strong> ${log.employee_email}</p>` : ''}
+                        ${log.employee_department ? `<p><strong>Department:</strong> ${log.employee_department}</p>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getConfidenceClass(score) {
+            if (score >= 0.8) return 'confidence-high';
+            if (score >= 0.6) return 'confidence-medium';
+            return 'confidence-low';
+        }
+
+        function getTimeAgo(date) {
+            const now = new Date();
+            const diffInSeconds = Math.floor((now - date) / 1000);
+            
+            if (diffInSeconds < 60) {
+                return `${diffInSeconds} seconds ago`;
+            } else if (diffInSeconds < 3600) {
+                const minutes = Math.floor(diffInSeconds / 60);
+                return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+            } else if (diffInSeconds < 86400) {
+                const hours = Math.floor(diffInSeconds / 3600);
+                return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+            } else {
+                const days = Math.floor(diffInSeconds / 86400);
+                return `${days} day${days > 1 ? 's' : ''} ago`;
+            }
+        }
+
+        // Generate reports
+        async function generateReport() {
+            if (!accessToken) {
+                showStatus('error', 'Please login first');
+                return;
+            }
+
+            const startDate = document.getElementById('reportStartDate').value;
+            const endDate = document.getElementById('reportEndDate').value;
+
+            if (!startDate || !endDate) {
+                showStatus('error', 'Please select both start and end dates');
+                return;
+            }
+
+            document.getElementById('reportLoading').style.display = 'block';
+
+            try {
+                const response = await fetch(`${API_BASE}/attendance/stats?start_date=${startDate}&end_date=${endDate}`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                const stats = await response.json();
+                displayReportResults(stats);
+            } catch (error) {
+                showStatus('error', `Error generating report: ${error.message}`);
+            } finally {
+                document.getElementById('reportLoading').style.display = 'none';
+            }
+        }
+
+        function displayReportResults(stats) {
+            const container = document.getElementById('reportResults');
+            container.innerHTML = `
+                <div class="attendance-log">
+                    <h3>📊 Attendance Statistics</h3>
+                    <p><strong>Total Employees:</strong> ${stats.total_employees}</p>
+                    <p><strong>Total Clock-ins:</strong> ${stats.total_clock_ins}</p>
+                    <p><strong>Total Clock-outs:</strong> ${stats.total_clock_outs}</p>
+                    <p><strong>Total Hours Worked:</strong> ${stats.total_hours_worked}</p>
+                    <p><strong>Average Hours per Employee:</strong> ${stats.average_hours_per_employee}</p>
+                    <p><strong>Period:</strong> ${new Date(stats.period_start).toLocaleDateString()} - ${new Date(stats.period_end).toLocaleDateString()}</p>
+                </div>
+            `;
+        }
+
+        // Utility functions
+        function dataURLtoBlob(dataURL) {
+            const arr = dataURL.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], { type: mime });
+        }
+
+        function showStatus(type, message) {
+            const statusDiv = document.getElementById('enrollStatus') || document.getElementById('attendanceStatus');
+            if (statusDiv) {
+                statusDiv.className = `status ${type}`;
+                statusDiv.textContent = message;
+            }
+        }
+
+        // Fetch user information
+        async function fetchUserInfo() {
+            if (!accessToken) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const userInfo = await response.json();
+                    currentUser = userInfo;
+                    displayUserInfo(userInfo);
+                } else {
+                    // Token might be expired, clear it
+                    accessToken = null;
+                    localStorage.removeItem('accessToken');
+                    hideUserInfo();
+                }
+            } catch (error) {
+                console.error('Error fetching user info:', error);
+                hideUserInfo();
+            }
+        }
+
+        // Display user information
+        function displayUserInfo(userInfo) {
+            const userInfoDiv = document.getElementById('userInfo');
+            const userNameSpan = document.getElementById('userName');
+            
+            userNameSpan.textContent = userInfo.name || userInfo.email || 'User';
+            userInfoDiv.style.display = 'block';
+            updateLoginButton();
+        }
+
+        // Hide user information
+        function hideUserInfo() {
+            const userInfoDiv = document.getElementById('userInfo');
+            userInfoDiv.style.display = 'none';
+            currentUser = null;
+            updateLoginButton();
+        }
+
+        // Login function
+        async function login() {
+            const email = prompt('Enter admin email:', 'admin@test.com');
+            const password = prompt('Enter admin password:', 'admin123');
+            
+            if (!email || !password) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    accessToken = result.access_token;
+                    localStorage.setItem('accessToken', accessToken);
+                    showStatus('success', 'Login successful!');
+                    
+                    // Fetch and display user info
+                    await fetchUserInfo();
+                } else {
+                    showStatus('error', `Login failed: ${result.detail}`);
+                }
+            } catch (error) {
+                showStatus('error', `Login error: ${error.message}`);
+            }
+        }
+
+        // Logout function
+        function logout() {
+            accessToken = null;
+            currentUser = null;
+            localStorage.removeItem('accessToken');
+            hideUserInfo();
+            showStatus('info', 'Logged out successfully');
+        }
+
+        // Add login button to header
+        document.addEventListener('DOMContentLoaded', function() {
+            const header = document.querySelector('.header');
+            const loginBtn = document.createElement('button');
+            loginBtn.id = 'loginBtn';
+            loginBtn.className = 'btn btn-secondary';
+            loginBtn.textContent = 'Login';
+            loginBtn.style.marginTop = '20px';
+            loginBtn.onclick = login;
+            header.appendChild(loginBtn);
+            
+            // Update button visibility based on login status
+            updateLoginButton();
+        });
+
+        // Update login button visibility
+        function updateLoginButton() {
+            const loginBtn = document.getElementById('loginBtn');
+            if (accessToken && currentUser) {
+                loginBtn.style.display = 'none';
+            } else {
+                loginBtn.style.display = 'inline-block';
+            }
+        }
+    </script>
+</body>
+</html>

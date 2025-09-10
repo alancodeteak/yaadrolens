@@ -1,0 +1,24 @@
+# Face Recognition with DeepFace + ArcFace
+deepface
+tensorflow
+mtcnn
+opencv-python
+Pillow
+
+# FastAPI Backend
+fastapi
+uvicorn[standard]
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+python-decouple
+
+# Database
+sqlalchemy
+psycopg2-binary
+alembic
+
+# Utilities
+requests
+numpy
+pandas
