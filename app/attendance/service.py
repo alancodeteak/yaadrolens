@@ -2,7 +2,7 @@ import os
 import uuid
 import json
 import numpy as np
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Any
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
@@ -11,7 +11,11 @@ from app.attendance.models import AttendanceLog, AttendanceType
 from app.employees.models import Employee, EmployeeEmbedding
 from app.employees.service import EmployeeService
 from app.face_recognition.deepface_service import deepface_service
+from app.face_recognition.cached_recognition_service import CachedFaceRecognitionService
+from app.core.redis_service import redis_service
+from app.core.config import settings
 from app.face_recognition.face_quality_utils import face_quality_validator
+from app.face_recognition.smart_recognition_service import smart_recognition_service
 
 
 class AttendanceService:
@@ -20,6 +24,14 @@ class AttendanceService:
         self.employee_service = EmployeeService(db)
         self.upload_dir = "uploads/attendance_images"
         os.makedirs(self.upload_dir, exist_ok=True)
+        
+        # Initialize cached recognition service if Redis is available
+        if settings.enable_redis_cache and redis_service.is_available():
+            self.cached_recognition = CachedFaceRecognitionService(redis_service, db)
+            self.use_cache = True
+        else:
+            self.cached_recognition = None
+            self.use_cache = False
     
     async def clock_in_out(self, image_file: UploadFile) -> Tuple[bool, str, Optional[str], Optional[str], Optional[AttendanceType], Optional[float], Optional[datetime]]:
         """
@@ -51,24 +63,39 @@ class AttendanceService:
                 issues_text = ", ".join(quality_result.issues)
                 return False, f"Face quality check failed: {issues_text}. Please ensure clear face visibility.", None, None, None, None, None
             
-            # Step 2: Extract embedding from the uploaded image
-            uploaded_embedding = deepface_service.extract_embedding(file_path)
+            # Step 2: Face recognition (with caching if available)
+            if self.use_cache and self.cached_recognition:
+                # Use cached recognition service
+                recognition_result = self.cached_recognition.recognize_face_cached(file_path)
+                
+                if recognition_result['success']:
+                    employee_id = recognition_result['employee_id']
+                    confidence = recognition_result['confidence']
+                else:
+                    # Clean up the saved file
+                    os.remove(file_path)
+                    return False, recognition_result.get('error', 'Face recognition failed'), None, None, None, None, None
+            else:
+                # Fallback to original method
+                uploaded_embedding = deepface_service.extract_embedding(file_path)
+                
+                if uploaded_embedding is None:
+                    # Clean up the saved file
+                    os.remove(file_path)
+                    return False, "Face not detected clearly in the uploaded image.", None, None, None, None, None
+                
+                # Step 3: Find best match in database embeddings
+                recognition_result = self._find_best_embedding_match(uploaded_embedding)
+                
+                if recognition_result is None:
+                    # Clean up the saved file
+                    os.remove(file_path)
+                    return False, "No matching employee found. Please ensure you are registered in the system.", None, None, None, None, None
+                
+                employee_id = recognition_result['employee_id']
+                confidence = recognition_result['confidence']
             
-            if uploaded_embedding is None:
-                # Clean up the saved file
-                os.remove(file_path)
-                return False, "Face not detected clearly in the uploaded image.", None, None, None, None, None
-            
-            # Step 3: Find best match in database embeddings
-            recognition_result = self._find_best_embedding_match(uploaded_embedding)
-            
-            if recognition_result is None:
-                # Clean up the saved file
-                os.remove(file_path)
-                return False, "No matching employee found in database.", None, None, None, None, None
-            
-            employee_id = recognition_result['employee_id']
-            confidence_score = recognition_result['confidence']
+            confidence_score = confidence
             
             # Get employee details
             employee = self.employee_service.get_employee(employee_id)
@@ -308,3 +335,125 @@ class AttendanceService:
                 summary["hours_worked"] = round(hours, 2)
         
         return list(employee_summary.values())
+    
+    async def smart_clock_in_out(self, image_file: UploadFile) -> Dict[str, Any]:
+        """
+        Smart clock in/out with enhanced recognition features.
+        
+        Returns:
+            Dict with detailed recognition results and recommendations
+        """
+        try:
+            # Validate file type
+            if not image_file.content_type or not image_file.content_type.startswith('image/'):
+                return {
+                    "success": False,
+                    "error": "Invalid image file",
+                    "retry_recommended": False,
+                    "suggested_actions": ["Please upload a valid image file"]
+                }
+            
+            # Save image
+            file_extension = os.path.splitext(image_file.filename)[1]
+            filename = f"attendance_{uuid.uuid4().hex}{file_extension}"
+            file_path = os.path.join(self.upload_dir, filename)
+            
+            with open(file_path, "wb") as buffer:
+                content = await image_file.read()
+                buffer.write(content)
+            
+            # Get all employee embeddings
+            employee_embeddings = self.db.query(EmployeeEmbedding).all()
+            embeddings_data = [
+                {
+                    "employee_id": str(emb.employee_id),
+                    "embedding": emb.embedding,
+                    "image_path": emb.image_path
+                }
+                for emb in employee_embeddings
+            ]
+            
+            if not embeddings_data:
+                return {
+                    "success": False,
+                    "error": "No employees registered in the system",
+                    "retry_recommended": False,
+                    "suggested_actions": ["Contact HR to register employees"]
+                }
+            
+            # Use smart recognition
+            recognition_result = smart_recognition_service.recognize_face_smart(file_path, embeddings_data)
+            
+            if not recognition_result["success"]:
+                # Clean up failed image
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                
+                return {
+                    "success": False,
+                    "error": recognition_result["error"],
+                    "confidence": recognition_result.get("confidence", 0.0),
+                    "quality_score": recognition_result.get("quality_score", 0.0),
+                    "retry_recommended": recognition_result.get("retry_recommended", True),
+                    "suggested_actions": recognition_result.get("suggested_actions", []),
+                    "metadata": recognition_result.get("metadata", {})
+                }
+            
+            # Get employee details
+            employee = self.db.query(Employee).filter(
+                Employee.id == recognition_result["employee_id"]
+            ).first()
+            
+            if not employee:
+                return {
+                    "success": False,
+                    "error": "Employee not found",
+                    "retry_recommended": True,
+                    "suggested_actions": ["Contact HR to verify employee registration"]
+                }
+            
+            # Determine attendance type
+            last_attendance = self.db.query(AttendanceLog).filter(
+                AttendanceLog.employee_id == employee.id
+            ).order_by(AttendanceLog.timestamp.desc()).first()
+            
+            if last_attendance and last_attendance.type == AttendanceType.IN:
+                attendance_type = AttendanceType.OUT
+            else:
+                attendance_type = AttendanceType.IN
+            
+            # Create attendance log
+            attendance_log = AttendanceLog(
+                employee_id=employee.id,
+                type=attendance_type,
+                confidence_score=str(recognition_result["confidence"]),
+                image_path=file_path
+            )
+            
+            self.db.add(attendance_log)
+            self.db.commit()
+            
+            return {
+                "success": True,
+                "employee_id": str(employee.id),
+                "employee_name": employee.name,
+                "attendance_type": attendance_type.value,
+                "confidence": recognition_result["confidence"],
+                "quality_score": recognition_result.get("quality_score", 0.0),
+                "retry_recommended": recognition_result.get("retry_recommended", False),
+                "timestamp": attendance_log.timestamp.isoformat(),
+                "metadata": recognition_result.get("metadata", {})
+            }
+            
+        except Exception as e:
+            self.db.rollback()
+            # Clean up file on error
+            if 'file_path' in locals() and os.path.exists(file_path):
+                os.remove(file_path)
+            
+            return {
+                "success": False,
+                "error": f"System error: {str(e)}",
+                "retry_recommended": True,
+                "suggested_actions": ["Please try again or contact support"]
+            }

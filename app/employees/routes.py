@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime
 from app.core.database import get_db
 from app.core.dependencies import get_current_admin_user
 from app.auth.models import User
@@ -9,9 +10,14 @@ from app.employees.schemas import (
     EmployeeUpdate, 
     EmployeeResponse, 
     EmployeeWithEmbeddings,
-    EmployeeEnrollment
+    EmployeeEnrollment,
+    TrainingCollectionStartResponse,
+    TrainingPhotoAddResponse,
+    TrainingProgressResponse
 )
 from app.employees.service import EmployeeService
+from app.core.redis_service import redis_service
+from app.face_recognition.cached_recognition_service import CachedFaceRecognitionService
 import json
 
 router = APIRouter(prefix="/employees", tags=["employees"])
@@ -311,3 +317,166 @@ async def add_employee_embeddings(
             for emb in embeddings
         ]
     }
+
+
+# Training Photo Routes
+@router.post("/{employee_id}/start-training", response_model=TrainingCollectionStartResponse)
+async def start_training_collection(
+    employee_id: str,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Start training photo collection for an employee."""
+    employee_service = EmployeeService(db)
+    return employee_service.start_training_collection(employee_id)
+
+
+@router.post("/{employee_id}/add-training-photo", response_model=TrainingPhotoAddResponse)
+async def add_training_photo(
+    employee_id: str,
+    pose_type: str = Form(...),
+    lighting_condition: str = Form(...),
+    expression: str = Form(...),
+    image: UploadFile = File(...),
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Add a training photo for an employee."""
+    employee_service = EmployeeService(db)
+    return await employee_service.add_training_photo(
+        employee_id, image, pose_type, lighting_condition, expression
+    )
+
+
+@router.get("/{employee_id}/training-progress", response_model=TrainingProgressResponse)
+async def get_training_progress(
+    employee_id: str,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Get training photo collection progress."""
+    employee_service = EmployeeService(db)
+    return employee_service.get_training_progress(employee_id)
+
+
+# Cache Management APIs
+@router.post("/admin/cache/warm")
+async def warm_embeddings_cache(
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Warm up the embeddings cache"""
+    try:
+        if not redis_service.is_available():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Redis service is not available"
+            )
+        
+        cached_service = CachedFaceRecognitionService(redis_service, db)
+        success = cached_service.warm_cache()
+        
+        if success:
+            return {
+                "success": True,
+                "message": "Cache warmed successfully",
+                "timestamp": datetime.now().isoformat()
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to warm cache"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error warming cache: {str(e)}"
+        )
+
+
+@router.get("/admin/cache/stats")
+async def get_cache_statistics(
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Get Redis cache statistics"""
+    try:
+        cached_service = CachedFaceRecognitionService(redis_service, db)
+        stats = cached_service.get_cache_stats()
+        return stats
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting cache stats: {str(e)}"
+        )
+
+
+@router.post("/admin/cache/invalidate")
+async def invalidate_cache(
+    employee_id: Optional[str] = None,
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Invalidate cache (all or specific employee)"""
+    try:
+        if not redis_service.is_available():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Redis service is not available"
+            )
+        
+        if employee_id:
+            success = redis_service.invalidate_employee_cache(employee_id)
+            message = f"Cache invalidated for employee {employee_id}"
+        else:
+            success = redis_service.invalidate_all_cache()
+            message = "All caches invalidated"
+        
+        if success:
+            return {
+                "success": True,
+                "message": message,
+                "timestamp": datetime.now().isoformat()
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to invalidate cache"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error invalidating cache: {str(e)}"
+        )
+
+
+@router.get("/admin/cache/health")
+async def check_cache_health(
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Check Redis connection and health"""
+    try:
+        is_healthy = redis_service.health_check()
+        redis_stats = redis_service.get_cache_stats()
+        
+        return {
+            "status": "healthy" if is_healthy else "unhealthy",
+            "redis_available": redis_service.is_available(),
+            "message": "Redis connection is working" if is_healthy else "Redis connection failed",
+            "stats": redis_stats,
+            "timestamp": datetime.now().isoformat()
+        }
+            
+    except Exception as e:
+        return {
+            "status": "error",
+            "redis_available": False,
+            "message": f"Redis health check error: {str(e)}",
+            "timestamp": datetime.now().isoformat()
+        }

@@ -14,6 +14,7 @@ from app.attendance.schemas import (
 )
 from app.attendance.service import AttendanceService
 from app.face_recognition.face_quality_utils import face_quality_validator, face_quality_validator_strict
+from app.face_recognition.smart_recognition_service import smart_recognition_service
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 
@@ -284,3 +285,33 @@ async def check_face_quality(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error checking face quality: {str(e)}"
         )
+
+
+@router.post("/smart-clock")
+async def smart_clock_in_out(
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Smart clock in/out with enhanced recognition features."""
+    attendance_service = AttendanceService(db)
+    
+    result = await attendance_service.smart_clock_in_out(image)
+    return result
+
+
+@router.get("/recognition-stats")
+async def get_recognition_stats(
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Get face recognition performance statistics."""
+    stats = smart_recognition_service.get_recognition_stats()
+    return stats
+
+
+@router.post("/reset-recognition-stats")
+async def reset_recognition_stats(
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Reset face recognition performance statistics."""
+    smart_recognition_service.reset_stats()
+    return {"message": "Recognition statistics reset successfully"}

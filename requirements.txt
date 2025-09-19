@@ -22,3 +22,42 @@ alembic
 requests
 numpy
 pandas
+
+# Redis Cache
+redis[hiredis]>=4.5.0
+
+# Configuration Management
+pydantic-settings
+
+# Data Processing & Analytics
+scipy
+scikit-learn
+matplotlib
+seaborn
+
+# Additional Python Standard Library Extensions
+python-dateutil
+pytz
+
+# Image Processing
+imageio
+
+# Development & Testing
+pytest
+pytest-asyncio
+httpx
+
+# Logging & Monitoring
+coloredlogs
+
+# File Handling
+aiofiles
+
+# JSON Web Tokens
+PyJWT
+
+# Environment Variables
+python-dotenv
+
+# Type Hints
+typing-extensions

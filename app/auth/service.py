@@ -9,72 +9,77 @@ from app.core.security import (
     create_access_token, 
     create_refresh_token
 )
+from app.core.service_base import BaseService
+from app.core.exceptions import (
+    ResourceAlreadyExistsError,
+    AuthenticationError,
+    ResourceNotFoundError,
+    ResourceInactiveError
+)
 from typing import Optional
 
 
-class AuthService:
+class AuthService(BaseService):
     def __init__(self, db: Session):
-        self.db = db
+        super().__init__(db)
     
     def create_user(self, user_data: UserCreate) -> User:
         """Create a new user with hashed password."""
-        try:
-            # Check if user already exists
-            existing_user = self.db.query(User).filter(User.email == user_data.email).first()
-            if existing_user:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email already registered"
-                )
-            
-            # Create new user
-            hashed_password = get_password_hash(user_data.password)
-            db_user = User(
-                email=user_data.email,
-                password_hash=hashed_password,
-                role=user_data.role
-            )
-            
-            self.db.add(db_user)
-            self.db.commit()
-            self.db.refresh(db_user)
-            
-            return db_user
-            
-        except IntegrityError:
-            self.db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-        except Exception as e:
-            self.db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error creating user: {str(e)}"
-            )
+        # Validate required fields
+        self.validate_required_fields(
+            {"email": user_data.email, "password": user_data.password},
+            ["email", "password"]
+        )
+        
+        # Check if user already exists
+        self.check_unique_constraint(User, "email", user_data.email, "User")
+        
+        # Create new user
+        hashed_password = get_password_hash(user_data.password)
+        db_user = User(
+            email=user_data.email,
+            password_hash=hashed_password,
+            role=user_data.role
+        )
+        
+        self.db.add(db_user)
+        self.safe_commit("Error creating user")
+        self.db.refresh(db_user)
+        
+        self.log_service_action("create_user", "User", str(db_user.id))
+        return db_user
     
-    def authenticate_user(self, login_data: UserLogin) -> Optional[User]:
+    def authenticate_user(self, login_data: UserLogin) -> User:
         """Authenticate user with email and password."""
+        # Validate required fields
+        self.validate_required_fields(
+            {"email": login_data.email, "password": login_data.password},
+            ["email", "password"]
+        )
+        
         user = self.db.query(User).filter(User.email == login_data.email).first()
         
         if not user:
-            return None
-        
-        if not verify_password(login_data.password, user.password_hash):
-            return None
+            self.log_service_action("failed_login_attempt", extra_data={"email": login_data.email, "reason": "user_not_found"})
+            raise AuthenticationError("Invalid email or password")
         
         if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Inactive user"
-            )
+            self.log_service_action("failed_login_attempt", extra_data={"email": login_data.email, "reason": "user_inactive"})
+            raise ResourceInactiveError("User", str(user.id))
         
+        if not verify_password(login_data.password, user.password_hash):
+            self.log_service_action("failed_login_attempt", extra_data={"email": login_data.email, "reason": "invalid_password"})
+            raise AuthenticationError("Invalid email or password")
+        
+        self.log_service_action("successful_login", "User", str(user.id))
         return user
     
     def get_user_by_id(self, user_id: str) -> Optional[User]:
         """Get user by ID."""
-        return self.db.query(User).filter(User.id == user_id).first()
+        try:
+            return self.get_or_404(User, user_id, "User")
+        except ResourceNotFoundError:
+            return None  # For backward compatibility
     
     def get_user_by_email(self, email: str) -> Optional[User]:
         """Get user by email."""

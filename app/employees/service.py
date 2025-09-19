@@ -1,13 +1,25 @@
 import os
 import json
 import uuid
+import logging
+import time
 from typing import List, Optional
+from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status, UploadFile
-from app.employees.models import Employee, EmployeeEmbedding
+from app.employees.models import Employee, EmployeeEmbedding, TrainingPhoto
 from app.employees.schemas import EmployeeCreate, EmployeeUpdate
 from app.face_recognition.deepface_service import deepface_service
+from app.face_recognition.face_quality_utils import face_quality_validator
+from app.core.redis_service import redis_service
+
+# Configure logger
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 class EmployeeService:
@@ -15,8 +27,10 @@ class EmployeeService:
         self.db = db
         self.upload_dir = "uploads/employee_images"
         self.dataset_dir = "dataset"
+        self.training_dir = "uploads/training_photos"
         os.makedirs(self.upload_dir, exist_ok=True)
         os.makedirs(self.dataset_dir, exist_ok=True)
+        os.makedirs(self.training_dir, exist_ok=True)
     
     def create_employee(self, employee_data: EmployeeCreate) -> Employee:
         """Create a new employee."""
@@ -120,6 +134,37 @@ class EmployeeService:
             # Refresh all embeddings to get their IDs
             for embedding in embeddings:
                 self.db.refresh(embedding)
+            
+            # Cache the new embeddings in Redis
+            if redis_service.is_available():
+                cache_start = time.time()
+                logger.info(f"🟡 REDIS CACHE - Employee Registration: Starting cache operation for {len(embeddings)} new embeddings")
+                
+                try:
+                    # Prepare embeddings for caching
+                    cache_embeddings = []
+                    for emb in embeddings:
+                        cache_embeddings.append({
+                            'id': str(emb.id),
+                            'embedding': emb.embedding,
+                            'image_path': emb.image_path,
+                            'created_at': emb.created_at.isoformat()
+                        })
+                    
+                    # Cache individual employee embeddings
+                    cache_success = redis_service.cache_employee_embeddings(str(employee_uuid), cache_embeddings)
+                    cache_time = time.time() - cache_start
+                    
+                    if cache_success:
+                        logger.info(f"🟢 REDIS CACHE - Employee Registration: Successfully cached embeddings for employee {employee_uuid} in {cache_time:.3f}s")
+                    else:
+                        logger.warning(f"🟠 REDIS CACHE - Employee Registration: Failed to cache embeddings for employee {employee_uuid} after {cache_time:.3f}s")
+                        
+                except Exception as cache_error:
+                    cache_time = time.time() - cache_start
+                    logger.error(f"🔴 REDIS CACHE - Employee Registration: Cache operation failed for employee {employee_uuid} after {cache_time:.3f}s: {str(cache_error)}")
+            else:
+                logger.warning(f"🔴 REDIS CACHE - Employee Registration: Redis unavailable, skipping cache for employee {employee_uuid}")
             
             return embeddings
             
@@ -374,4 +419,165 @@ class EmployeeService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error processing auto-captured images: {str(e)}"
+            )
+    
+    # Training Photo Methods
+    def start_training_collection(self, employee_id: str) -> dict:
+        """Start training photo collection for an employee."""
+        try:
+            employee_uuid = uuid.UUID(employee_id)
+            employee = self.db.query(Employee).filter(Employee.id == employee_uuid).first()
+            
+            if not employee:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Employee not found"
+                )
+            
+            # Update training status
+            employee.training_status = "collecting"
+            self.db.commit()
+            
+            return {
+                "employee_id": str(employee.id),
+                "name": employee.name,
+                "status": "collecting",
+                "required_photos": 15,
+                "collected_photos": employee.training_photos_count
+            }
+            
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid employee ID format"
+            )
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error starting training collection: {str(e)}"
+            )
+    
+    async def add_training_photo(self, employee_id: str, image_file: UploadFile, 
+                                pose_type: str, lighting_condition: str, 
+                                expression: str) -> dict:
+        """Add a training photo for an employee."""
+        try:
+            employee_uuid = uuid.UUID(employee_id)
+            employee = self.db.query(Employee).filter(Employee.id == employee_uuid).first()
+            
+            if not employee:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Employee not found"
+                )
+            
+            # Validate file type
+            if not image_file.content_type or not image_file.content_type.startswith('image/'):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid image file"
+                )
+            
+            # Save image
+            file_extension = os.path.splitext(image_file.filename)[1]
+            filename = f"training_{str(employee_uuid).replace('-', '')}_{uuid.uuid4().hex}{file_extension}"
+            file_path = os.path.join(self.training_dir, filename)
+            
+            with open(file_path, "wb") as buffer:
+                content = await image_file.read()
+                buffer.write(content)
+            
+            # Calculate quality score using existing face_quality_validator
+            quality_result = face_quality_validator.validate_face_quality(file_path)
+            quality_score = quality_result.confidence
+            
+            # Create training photo record
+            training_photo = TrainingPhoto(
+                employee_id=employee_uuid,
+                image_path=file_path,
+                pose_type=pose_type,
+                quality_score=quality_score,
+                lighting_condition=lighting_condition,
+                expression=expression,
+                is_validated=quality_score > 0.7
+            )
+            
+            self.db.add(training_photo)
+            
+            # Update employee training stats
+            employee.training_photos_count += 1
+            employee.last_training_photo = datetime.now()
+            
+            if employee.training_photos_count >= 15:
+                employee.training_status = "completed"
+            
+            self.db.commit()
+            
+            return {
+                "photo_id": str(training_photo.id),
+                "quality_score": quality_score,
+                "is_validated": training_photo.is_validated,
+                "total_photos": employee.training_photos_count
+            }
+            
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid employee ID format"
+            )
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error adding training photo: {str(e)}"
+            )
+    
+    def get_training_progress(self, employee_id: str) -> dict:
+        """Get training photo collection progress."""
+        try:
+            employee_uuid = uuid.UUID(employee_id)
+            employee = self.db.query(Employee).filter(Employee.id == employee_uuid).first()
+            
+            if not employee:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Employee not found"
+                )
+            
+            photos = self.db.query(TrainingPhoto).filter(
+                TrainingPhoto.employee_id == employee_uuid
+            ).all()
+            
+            validated_count = len([p for p in photos if p.is_validated])
+            completion_percentage = (len(photos) / 15) * 100 if len(photos) > 0 else 0
+            
+            return {
+                "employee_id": str(employee.id),
+                "name": employee.name,
+                "status": employee.training_status,
+                "total_photos": len(photos),
+                "validated_photos": validated_count,
+                "required_photos": 15,
+                "completion_percentage": completion_percentage,
+                "photos": [
+                    {
+                        "id": str(p.id),
+                        "pose_type": p.pose_type,
+                        "quality_score": p.quality_score,
+                        "is_validated": p.is_validated,
+                        "created_at": p.created_at
+                    } for p in photos
+                ]
+            }
+            
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid employee ID format"
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error getting training progress: {str(e)}"
             )

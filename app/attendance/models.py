@@ -24,3 +24,4 @@ class AttendanceLog(Base):
 
     # Relationships
     employee = relationship("Employee", back_populates="attendance_logs")
+    ground_truth_validation = relationship("GroundTruthValidation", back_populates="attendance_log", uselist=False)

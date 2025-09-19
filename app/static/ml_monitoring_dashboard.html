@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Monitoring Dashboard - YaadroLens</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            border-left: 5px solid #667eea;
+            transition: transform 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .metric-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .metric-value.good {
+            color: #28a745;
+        }
+
+        .metric-value.warning {
+            color: #ffc107;
+        }
+
+        .metric-value.danger {
+            color: #dc3545;
+        }
+
+        .metric-description {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .validation-queue {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .validation-item {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.2s ease;
+        }
+
+        .validation-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+
+        .validation-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .confidence-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .confidence-high {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .confidence-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .confidence-low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .threshold-controls {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .threshold-slider {
+            margin: 15px 0;
+        }
+
+        .threshold-slider label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .threshold-slider input {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .threshold-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .recommendations {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .recommendation {
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+        }
+
+        .recommendation.high-priority {
+            border-left-color: #dc3545;
+        }
+
+        .recommendation.medium-priority {
+            border-left-color: #ffc107;
+        }
+
+        .recommendation.low-priority {
+            border-left-color: #28a745;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-healthy {
+            background: #28a745;
+        }
+
+        .status-warning {
+            background: #ffc107;
+        }
+
+        .status-critical {
+            background: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>🧠 ML Monitoring Dashboard</h1>
+            <p>Real-time Machine Learning Performance Monitoring & Optimization</p>
+            <div id="lastUpdate" style="margin-top: 15px; font-size: 0.9em; opacity: 0.8;">
+                Last updated: Loading...
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Key Metrics Overview -->
+            <div class="metrics-grid" id="metricsGrid">
+                <div class="metric-card">
+                    <h3><span class="status-indicator status-healthy"></span>System Accuracy</h3>
+                    <div class="metric-value good" id="systemAccuracy">Loading...</div>
+                    <div class="metric-description">Overall recognition accuracy</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3><span class="status-indicator status-warning"></span>False Positive Rate</h3>
+                    <div class="metric-value warning" id="falsePositiveRate">Loading...</div>
+                    <div class="metric-description">Incorrect identifications</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3><span class="status-indicator status-warning"></span>False Negative Rate</h3>
+                    <div class="metric-value warning" id="falseNegativeRate">Loading...</div>
+                    <div class="metric-description">Missed identifications</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3><span class="status-indicator status-healthy"></span>Pending Validations</h3>
+                    <div class="metric-value" id="pendingValidations">Loading...</div>
+                    <div class="metric-description">Awaiting manual review</div>
+                </div>
+            </div>
+
+            <!-- Performance Trends -->
+            <div class="section">
+                <h2>📈 Performance Trends</h2>
+                <div class="tabs">
+                    <button class="tab active" onclick="showTab('accuracy-trend')">Accuracy</button>
+                    <button class="tab" onclick="showTab('precision-recall')">Precision/Recall</button>
+                    <button class="tab" onclick="showTab('quality-trends')">Data Quality</button>
+                </div>
+                
+                <div id="accuracy-trend" class="tab-content active">
+                    <div class="chart-container">
+                        <canvas id="accuracyChart"></canvas>
+                    </div>
+                </div>
+                
+                <div id="precision-recall" class="tab-content">
+                    <div class="chart-container">
+                        <canvas id="precisionRecallChart"></canvas>
+                    </div>
+                </div>
+                
+                <div id="quality-trends" class="tab-content">
+                    <div class="chart-container">
+                        <canvas id="qualityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Threshold Optimization -->
+            <div class="section">
+                <h2>⚙️ Threshold Optimization</h2>
+                
+                <div class="threshold-controls">
+                    <h3>Current Thresholds</h3>
+                    <div class="threshold-slider">
+                        <label>Recognition Threshold: <span class="threshold-value" id="recognitionThresholdValue">0.5</span></label>
+                        <input type="range" id="recognitionThreshold" min="0.1" max="0.9" step="0.05" value="0.5">
+                    </div>
+                    <div class="threshold-slider">
+                        <label>High Confidence Threshold: <span class="threshold-value" id="highConfidenceThresholdValue">0.8</span></label>
+                        <input type="range" id="highConfidenceThreshold" min="0.1" max="0.9" step="0.05" value="0.8">
+                    </div>
+                    <div class="threshold-slider">
+                        <label>Low Confidence Threshold: <span class="threshold-value" id="lowConfidenceThresholdValue">0.3</span></label>
+                        <input type="range" id="lowConfidenceThreshold" min="0.1" max="0.9" step="0.05" value="0.3">
+                    </div>
+                    <button class="btn btn-primary" onclick="analyzeThresholds()">Analyze Optimal Thresholds</button>
+                    <button class="btn btn-warning" onclick="createExperiment()">Create A/B Test</button>
+                </div>
+
+                <div class="recommendations" id="thresholdRecommendations">
+                    <h3>Optimization Recommendations</h3>
+                    <p>Click "Analyze Optimal Thresholds" to get personalized recommendations based on your data.</p>
+                </div>
+            </div>
+
+            <!-- Ground Truth Validation Queue -->
+            <div class="section">
+                <h2>✅ Ground Truth Validation Queue</h2>
+                <div class="validation-queue" id="validationQueue">
+                    <div class="loading" id="validationLoading">
+                        <div class="spinner"></div>
+                        <p>Loading validation queue...</p>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="loadValidationQueue()">Refresh Queue</button>
+                <button class="btn btn-success" onclick="bulkValidate()">Bulk Validate</button>
+            </div>
+
+            <!-- ROC Curve Analysis -->
+            <div class="section">
+                <h2>📊 ROC Curve Analysis</h2>
+                <div class="chart-container">
+                    <canvas id="rocChart"></canvas>
+                </div>
+                <p style="margin-top: 15px; color: #666;">
+                    ROC (Receiver Operating Characteristic) curve shows the trade-off between True Positive Rate and False Positive Rate at various threshold settings.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let dashboardData = {};
+        let charts = {};
+        const API_BASE = 'http://localhost:8000/api/v1';
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+            setupThresholdSliders();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(loadDashboardData, 30000);
+        });
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                const response = await fetch(`${API_BASE}/ml-monitoring/dashboard`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                dashboardData = await response.json();
+                updateMetrics();
+                updateCharts();
+                updateLastUpdateTime();
+                
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                showError('Failed to load dashboard data. Please check your connection.');
+            }
+        }
+
+        // Update key metrics
+        function updateMetrics() {
+            const stats = dashboardData.validation_stats || {};
+            const currentSession = dashboardData.current_session || {};
+            
+            // System Accuracy
+            const accuracy = stats.accuracy || currentSession.system_accuracy || 0;
+            document.getElementById('systemAccuracy').textContent = (accuracy * 100).toFixed(1) + '%';
+            updateMetricStatus('systemAccuracy', accuracy, 0.9, 0.8);
+            
+            // False Positive Rate
+            const fpr = stats.false_positive_rate || currentSession.false_positive_rate || 0;
+            document.getElementById('falsePositiveRate').textContent = (fpr * 100).toFixed(1) + '%';
+            updateMetricStatus('falsePositiveRate', 1 - fpr, 0.9, 0.8); // Invert for status
+            
+            // False Negative Rate
+            const fnr = stats.false_negative_rate || currentSession.false_negative_rate || 0;
+            document.getElementById('falseNegativeRate').textContent = (fnr * 100).toFixed(1) + '%';
+            updateMetricStatus('falseNegativeRate', 1 - fnr, 0.9, 0.8); // Invert for status
+            
+            // Pending Validations
+            const pending = dashboardData.pending_validations || 0;
+            document.getElementById('pendingValidations').textContent = pending;
+            updateMetricStatus('pendingValidations', pending > 50 ? 0.3 : pending > 20 ? 0.7 : 1.0, 0.8, 0.5);
+        }
+
+        // Update metric status color
+        function updateMetricStatus(elementId, value, goodThreshold, warningThreshold) {
+            const element = document.getElementById(elementId);
+            element.className = 'metric-value';
+            
+            if (value >= goodThreshold) {
+                element.classList.add('good');
+            } else if (value >= warningThreshold) {
+                element.classList.add('warning');
+            } else {
+                element.classList.add('danger');
+            }
+        }
+
+        // Update charts
+        function updateCharts() {
+            updateAccuracyChart();
+            updatePrecisionRecallChart();
+            updateQualityChart();
+            updateROCChart();
+        }
+
+        // Update accuracy trend chart
+        function updateAccuracyChart() {
+            const ctx = document.getElementById('accuracyChart').getContext('2d');
+            const trends = dashboardData.performance_trends || [];
+            
+            if (charts.accuracy) {
+                charts.accuracy.destroy();
+            }
+            
+            charts.accuracy = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: trends.map(t => new Date(t.date).toLocaleDateString()),
+                    datasets: [{
+                        label: 'Accuracy',
+                        data: trends.map(t => t.accuracy * 100),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Accuracy (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update precision/recall chart
+        function updatePrecisionRecallChart() {
+            const ctx = document.getElementById('precisionRecallChart').getContext('2d');
+            const trends = dashboardData.performance_trends || [];
+            
+            if (charts.precisionRecall) {
+                charts.precisionRecall.destroy();
+            }
+            
+            charts.precisionRecall = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: trends.map(t => new Date(t.date).toLocaleDateString()),
+                    datasets: [{
+                        label: 'Precision',
+                        data: trends.map(t => t.precision * 100),
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Recall',
+                        data: trends.map(t => t.recall * 100),
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Percentage (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update quality trend chart
+        function updateQualityChart() {
+            const ctx = document.getElementById('qualityChart').getContext('2d');
+            const trends = dashboardData.quality_trends || [];
+            
+            if (charts.quality) {
+                charts.quality.destroy();
+            }
+            
+            charts.quality = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: trends.map(t => new Date(t.date).toLocaleDateString()),
+                    datasets: [{
+                        label: 'Average Quality Score',
+                        data: trends.map(t => t.avg_quality_score * 100),
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        borderColor: '#667eea',
+                        borderWidth: 1
+                    }, {
+                        label: 'High Quality Ratio',
+                        data: trends.map(t => t.high_quality_ratio * 100),
+                        backgroundColor: 'rgba(40, 167, 69, 0.6)',
+                        borderColor: '#28a745',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Percentage (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update ROC chart
+        function updateROCChart() {
+            const ctx = document.getElementById('rocChart').getContext('2d');
+            const thresholdAnalysis = dashboardData.threshold_analysis || {};
+            const rocData = thresholdAnalysis.roc_curve_data || [];
+            
+            if (charts.roc) {
+                charts.roc.destroy();
+            }
+            
+            if (rocData.length === 0) {
+                // Show placeholder
+                charts.roc = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['No Data'],
+                        datasets: [{
+                            label: 'ROC Curve',
+                            data: [],
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Insufficient data for ROC analysis'
+                            }
+                        }
+                    }
+                });
+                return;
+            }
+            
+            charts.roc = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'ROC Curve',
+                        data: rocData.map(point => ({
+                            x: point.fpr * 100,
+                            y: point.tpr * 100
+                        })),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Random Classifier',
+                        data: [{x: 0, y: 0}, {x: 100, y: 100}],
+                        borderColor: '#dc3545',
+                        borderDash: [5, 5],
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'False Positive Rate (%)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'True Positive Rate (%)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `ROC Curve (AUC: ${(thresholdAnalysis.auc || 0).toFixed(3)})`
+                        }
+                    }
+                }
+            });
+        }
+
+        // Setup threshold sliders
+        function setupThresholdSliders() {
+            const sliders = ['recognitionThreshold', 'highConfidenceThreshold', 'lowConfidenceThreshold'];
+            
+            sliders.forEach(sliderId => {
+                const slider = document.getElementById(sliderId);
+                const valueDisplay = document.getElementById(sliderId + 'Value');
+                
+                slider.addEventListener('input', function() {
+                    valueDisplay.textContent = this.value;
+                });
+            });
+        }
+
+        // Analyze thresholds
+        async function analyzeThresholds() {
+            try {
+                showLoading('thresholdRecommendations', 'Analyzing optimal thresholds...');
+                
+                const response = await fetch(`${API_BASE}/ml-monitoring/thresholds/optimization`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const analysis = await response.json();
+                displayThresholdRecommendations(analysis);
+                
+            } catch (error) {
+                console.error('Error analyzing thresholds:', error);
+                showError('Failed to analyze thresholds. Please try again.');
+            }
+        }
+
+        // Display threshold recommendations
+        function displayThresholdRecommendations(analysis) {
+            const container = document.getElementById('thresholdRecommendations');
+            
+            if (analysis.error) {
+                container.innerHTML = `
+                    <h3>Optimization Recommendations</h3>
+                    <div class="recommendation medium-priority">
+                        <h4>⚠️ Insufficient Data</h4>
+                        <p>${analysis.error}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<h3>Optimization Recommendations</h3>';
+            
+            if (analysis.recommendations && analysis.recommendations.length > 0) {
+                analysis.recommendations.forEach(rec => {
+                    const priorityClass = rec.priority === 'high' ? 'high-priority' : 
+                                        rec.priority === 'medium' ? 'medium-priority' : 'low-priority';
+                    
+                    html += `
+                        <div class="recommendation ${priorityClass}">
+                            <h4>${rec.title}</h4>
+                            <p>${rec.impact}</p>
+                            <p><strong>Recommended Threshold:</strong> ${rec.recommended_threshold?.toFixed(3) || 'N/A'}</p>
+                            <p><strong>Trade-offs:</strong> ${rec.tradeoffs || 'None specified'}</p>
+                            <button class="btn btn-primary" onclick="applyRecommendation(${JSON.stringify(rec).replace(/"/g, '&quot;')})">
+                                Apply Recommendation
+                            </button>
+                        </div>
+                    `;
+                });
+            } else {
+                html += `
+                    <div class="recommendation low-priority">
+                        <h4>✅ Current Thresholds Look Good</h4>
+                        <p>No significant improvements found. Your current thresholds are performing well.</p>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        // Apply recommendation
+        function applyRecommendation(recommendation) {
+            if (confirm(`Apply this threshold optimization?\n\nThis will update the recognition threshold to ${recommendation.recommended_threshold?.toFixed(3)}`)) {
+                document.getElementById('recognitionThreshold').value = recommendation.recommended_threshold;
+                document.getElementById('recognitionThresholdValue').textContent = recommendation.recommended_threshold?.toFixed(3);
+                
+                // You could also automatically create an experiment here
+                alert('Threshold updated! Consider creating an A/B test to validate the change.');
+            }
+        }
+
+        // Create experiment
+        async function createExperiment() {
+            const experimentName = prompt('Enter experiment name:', 'Threshold_Optimization_' + new Date().toISOString().slice(0, 10));
+            if (!experimentName) return;
+            
+            const experimentData = {
+                experiment_name: experimentName,
+                description: 'Manual threshold experiment from dashboard',
+                recognition_threshold: parseFloat(document.getElementById('recognitionThreshold').value),
+                high_confidence_threshold: parseFloat(document.getElementById('highConfidenceThreshold').value),
+                low_confidence_threshold: parseFloat(document.getElementById('lowConfidenceThreshold').value),
+                traffic_percentage: 10.0
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/ml-monitoring/thresholds/experiment`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(experimentData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                alert(`Experiment "${experimentName}" created successfully! ID: ${result.experiment.id}`);
+                
+            } catch (error) {
+                console.error('Error creating experiment:', error);
+                alert('Failed to create experiment. Please try again.');
+            }
+        }
+
+        // Load validation queue
+        async function loadValidationQueue() {
+            const container = document.getElementById('validationQueue');
+            const loading = document.getElementById('validationLoading');
+            
+            loading.style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_BASE}/ml-monitoring/validations/pending?limit=20`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const validations = await response.json();
+                displayValidationQueue(validations);
+                
+            } catch (error) {
+                console.error('Error loading validation queue:', error);
+                container.innerHTML = '<p>Failed to load validation queue. Please try again.</p>';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Display validation queue
+        function displayValidationQueue(validations) {
+            const container = document.getElementById('validationQueue');
+            
+            if (validations.length === 0) {
+                container.innerHTML = '<p>✅ No pending validations! All recognition results have been validated.</p>';
+                return;
+            }
+            
+            let html = '';
+            validations.forEach(validation => {
+                const confidenceClass = validation.confidence_score >= 0.8 ? 'confidence-high' :
+                                      validation.confidence_score >= 0.5 ? 'confidence-medium' : 'confidence-low';
+                
+                html += `
+                    <div class="validation-item" data-validation-id="${validation.id}">
+                        <div class="validation-header">
+                            <div>
+                                <strong>Validation ID:</strong> ${validation.id}
+                                <span class="confidence-badge ${confidenceClass}">
+                                    Confidence: ${(validation.confidence_score * 100).toFixed(1)}%
+                                </span>
+                            </div>
+                            <div>
+                                <strong>Date:</strong> ${new Date(validation.created_at).toLocaleString()}
+                            </div>
+                        </div>
+                        <div>
+                            <p><strong>Predicted Employee:</strong> ${validation.predicted_employee_id || 'Unknown'}</p>
+                            <p><strong>Attendance Log ID:</strong> ${validation.attendance_log_id}</p>
+                            <p><strong>Quality Score:</strong> ${validation.image_quality_score ? (validation.image_quality_score * 100).toFixed(1) + '%' : 'N/A'}</p>
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <button class="btn btn-success" onclick="validateResult(${validation.id}, 'confirmed', '${validation.predicted_employee_id}')">
+                                ✅ Correct
+                            </button>
+                            <button class="btn btn-danger" onclick="validateResult(${validation.id}, 'rejected', null)">
+                                ❌ Incorrect
+                            </button>
+                            <button class="btn btn-warning" onclick="validateResult(${validation.id}, 'uncertain', null)">
+                                ❓ Uncertain
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Validate result
+        async function validateResult(validationId, status, actualEmployeeId) {
+            const notes = prompt('Optional notes for this validation:');
+            
+            const validationData = {
+                validation_status: status,
+                actual_employee_id: actualEmployeeId,
+                notes: notes
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/ml-monitoring/validations/${validationId}/validate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(validationData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                // Remove the validation item from the queue
+                const item = document.querySelector(`[data-validation-id="${validationId}"]`);
+                if (item) {
+                    item.remove();
+                }
+                
+                // Refresh dashboard data
+                loadDashboardData();
+                
+            } catch (error) {
+                console.error('Error validating result:', error);
+                alert('Failed to validate result. Please try again.');
+            }
+        }
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        // Utility functions
+        function updateLastUpdateTime() {
+            document.getElementById('lastUpdate').textContent = `Last updated: ${new Date().toLocaleString()}`;
+        }
+
+        function showLoading(containerId, message) {
+            document.getElementById(containerId).innerHTML = `
+                <div class="loading" style="display: block;">
+                    <div class="spinner"></div>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            console.error(message);
+            // You could show a toast notification or alert here
+        }
+
+        // Initialize validation queue on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadValidationQueue();
+        });
+    </script>
+</body>
+</html>
